@@ -1,0 +1,22 @@
+master:      localhost
+file_client: local
+
+fileserver_backend:
+  - roots
+  - git
+
+file_roots:
+  base:
+    - /srv/salt
+    - /var/cache/salt/minion/gitfs/refs/base
+
+pillar_roots:
+  base:
+    - /srv/pillar
+    - /srv/salt/pillar
+
+gitfs_provider: gitpython
+gitfs_remotes:
+  - https://github.com/asku/dev-salt-formulas.git
+  - https://github.com/saltstack-formulas/vim-formula.git
+  - https://github.com/saltstack-formulas/tmux-formula.git
