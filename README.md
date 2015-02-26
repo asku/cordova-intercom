@@ -1,4 +1,7 @@
-# vagrant-starter
+# cordova-intercom
 
-Copy this repo to start building a new project. This includes some nice defaults for your vagrant
-setup that are useful, as well as a base minion configured with the asku salt formula repos.
+## Install
+
+```sh
+$ cordova plugin add co.asku.cordova.intercom --variable API_KEY="ios_sdk-0000..." --variable APP_ID="zz..."`
+```
