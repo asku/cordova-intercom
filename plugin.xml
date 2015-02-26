@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='utf-8'?>
+<plugin id="co.asku.cordova.intercom" version="0.1" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
+    <name>cordova-intercom</name>
+    <author>Josh Dover</author>
+
+    <engines>
+      <engine name="cordova" version=">=3.0.0" />
+    </engines>
+
+    <preference name="API_KEY" />
+    <preference name="APP_ID" />
+
+    <js-module name="Intercom" src="www/cordova-intercom.js">
+        <clobbers target="cordova.plugins.intercom" />
+    </js-module>
+
+    <platform name="ios">
+      <header-file src="src/ios/Intercom.h" />
+      <source-file src="src/ios/libIntercom.a" framework="true" compiler-flags="-ObjC" />
+
+      <header-file src="src/ios/CordovaIntercom.h" />
+      <source-file src="src/ios/CordovaIntercom.m" />
+
+      <config-file target="config.xml" parent="*/">
+        <feature name="Intercom">
+          <param name="ios-package" value="CordovaIntercom" />
+          <param name="onload" value="true" />
+        </feature>
+      </config-file>
+
+      <config-file target="*-Info.plist" parent="IntercomApiKey">
+        <string>$API_KEY</string>
+      </config-file>
+
+      <config-file target="*-Info.plist" parent="IntercomAppId">
+        <string>$APP_ID</string>
+      </config-file>
+
+      <framework src="ImageIO.framework" />
+      <framework src="MobileCoreServices.framework" />
+      <framework src="SystemConfiguration.framework" />
+      <framework src="AVFoundation.framework" />
+    </platform>
+</plugin>
