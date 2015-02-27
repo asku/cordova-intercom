@@ -21,6 +21,9 @@
       <header-file src="src/ios/CordovaIntercom.h" />
       <source-file src="src/ios/CordovaIntercom.m" />
 
+      <header-file src="src/ios/AppDelegate+Intercom.h" />
+      <source-file src="src/ios/AppDelegate+Intercom.m" />
+
       <config-file target="config.xml" parent="*/">
         <feature name="Intercom">
           <param name="ios-package" value="CordovaIntercom" />
