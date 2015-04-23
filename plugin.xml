@@ -40,5 +40,7 @@
       <framework src="MobileCoreServices.framework" />
       <framework src="SystemConfiguration.framework" />
       <framework src="AVFoundation.framework" />
+      <framework src="Security.framework" />
+      <framework src="QuartzCore.framework" />
     </platform>
 </plugin>
