@@ -16,5 +16,6 @@
 - (void) updateAttributes:(CDVInvokedUrlCommand*)command;
 - (void) logEvent:(CDVInvokedUrlCommand*)command;
 - (void) checkForUnreadMessages:(CDVInvokedUrlCommand*)command;
+- (void) setDeviceToken:(CDVInvokedUrlCommand*)command;
 
 @end
