@@ -1,54 +1,342 @@
+
 //
 //  Intercom.h
-//  Intercom for iOS SDK - Version 2.0.7
+//  Intercom for iOS SDK - Version 2.2.2
 //
-//  Created by Intercom on 15/04/2014.
+//  Created by Intercom on 8/01/2015.
 //  Copyright (c) 2014 Intercom. All rights reserved.
 //
-
-#if __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_7_0
-#error This version (2.x) of the Intercom iOS SDK supports iOS 7.0 upwards.
-#endif
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
-//=========================================================================================================
-/** @name Intercom Presentation Modes */
-//=========================================================================================================
-/*! Use these values to constrain an incoming notification view to a defined section of the window. */
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_7_0
+#error This version (2.2.1) of the Intercom iOS SDK supports iOS 7.0 upwards.
+#endif
+
+// Use these values to constrain an incoming notification view to a defined section of the window.
+typedef NS_ENUM(NSUInteger, ICMPreviewPosition){
+    ICMPreviewPositionBottomLeft   = 0,
+    ICMPreviewPositionBottomRight  = 1,
+    ICMPreviewPositionTopLeft      = 2,
+    ICMPreviewPositionTopRight     = 3
+};
+
+__attribute__ ((deprecated))
+@protocol IntercomSessionListener <NSObject>
+- (void)intercomSessionStatusDidChange:(BOOL)isSessionOpen;
+@end
+
 typedef NS_ENUM(NSUInteger, ICMPresentationMode){
-    /** Show the notification view in the bottom left area of the screen */
     ICMPresentationModeBottomLeft   = 0,
-    /** Show the notification view in the bottom right area of the screen */
     ICMPresentationModeBottomRight  = 1,
-    /** Show the notification view in the top left area of the screen */
     ICMPresentationModeTopLeft      = 2,
-    /** Show the notification view in the top right area of the screen */
     ICMPresentationModeTopRight     = 3
 };
 
+/**
+ Intercom is your direct line of communication to every user, right inside your app. Intercom’s in-app messages
+ are up to 10 times more effective than email too! Send the right messages, to the right users, at exactly the right time.
+ 
+ ## How do I track my users?
+ 
+ In order to see your users in Intercom's user list, you must first register them via your iOS application. If you have a
+ place in your application where you become aware of the user's identity such as a log in view controller, call one of the
+ following depending on the information you have available for that user:
+ 
+ If you have both a unique user identifier and an email for your users::
+ 
+ [Intercom registerUserWithUserId:@"123456" email:@"joe@example.com"];
+ 
+ If you only have a unique identifier for your users:
+ 
+ [Intercom registerUserWithUserId:@"123456"];
+ 
+ Finally, if you only have an email address for your users:
+ 
+ [Intercom registerUserWithEmail:@"joe@example.com"];
+ 
+ ## Can I track unidentified users?
+ 
+ Yes, absolutely. If you have an application that doesn't require users to log in, you can call:
+ 
+ [Intercom registerUnidentifiedUser];
+ 
+ If the user subsequently logs in or you learn additional information about them (e.g. get an email address),
+ calling any of the other user registration methods will update that user's identity in Intercom and contain
+ all user data tracked previously.
+ 
+ ## I'm using a previous SDK version and this looks different, what has changed?
+ 
+ We have re-architected the internals of the iOS SDK to ensure it is as reliable as possible while tracking
+ your users. We have focused on removing the asynchronous behaviour of the SDK. For example you no longer need
+ to wait for the completion blocks of the old `beginSession` calls before logging events or updating user data.
+ In doing so the SDK is more nimble and reliable than ever before.
+ 
+ Previous versions of the SDK will migrate with minimal effort. All deprecated methods still work for now,
+ excluding the old session listener (since v2.0.6). These methods will be permanently removed in a future
+ version.
+ 
+ ## How do push notifications work?
+ 
+ The Intercom iOS SDK enables your users to receive push notifications for new messages. Simply call:
+ 
+ - (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken {
+ [Intercom setDeviceToken:deviceToken];
+ }
+ 
+ in your `didRegisterForRemoteNotificationsWithDeviceToken:` method once you have registered your app for
+ push notifications with the `UIApplicationDelegate`.
+ 
+ When your app receives a push notification the SDK checks to see if it is an Intercom push notification
+ and opens the SDK if required. You do not need to implement any additional code in order to launch the SDK.
+ 
+ To do this we [safely swizzle](http://blog.newrelic.com/2014/04/16/right-way-to-swizzle/) the public methods
+ in `UIApplicationDelegate` that handle receiving push notifications. We do not use any private APIs to do this.
+ 
+ ## More information
+ 
+ Full documentation is available [here](http://docs.intercom.io/Install-on-your-mobile-product) and please contact
+ us directly via Intercom for any support or questions you may have.
+ 
+ */
+@interface Intercom : NSObject
+
 //=========================================================================================================
-/** @name Intercom SDK Error Domain and Error Codes */
+/*! @name Getting set up */
 //=========================================================================================================
-/*! Use these values to identify errors returned by the Intercom iOS SDK */
-UIKIT_EXTERN NSString *const IntercomSDKErrorDomain;
-
-typedef NS_ENUM(NSInteger, ICMSDKError) {
-    /** Mandatory parameter missing */
-    ICMSDKErrorParameterMissing     = 1001,
-    /** Credentials missing (no session begun for user) */
-    ICMSDKErrorCredentialsMissing   = 1002,
-    /** Error occured when trying to update user */
-    ICMSDKErrorUpdateUserError      = 1003,
-    /** AppId missing (need to call setApiKey:forAppId: first */
-    ICMSDKErrorAppIdMissing         = 1004
-};
-
-
+/*!
+ Initialize Intercom with your iOS API key and App ID.  This will allow your app to connect with Intercom.
+ This is best done in the application delegate's didFinishLaunchingWithOptions: method.
+ 
+ @param apiKey The iOS-SDK API key found on the API Key settings page.
+ @param appId  The App ID of your Intercom app.
+ */
++ (void)setApiKey:(NSString *)apiKey forAppId:(NSString *)appId;
 
 //=========================================================================================================
-/** @name Intercom Notifications */
+/*! @name Using secure mode */
+//=========================================================================================================
+/*!
+ Secure Mode helps to make sure that conversations between you and your users are kept private, and that one
+ user can't impersonate another. In Secure Mode the iOS SDK will sign all requests going to the Intercom servers
+ with tokens. It requires your mobile application to have its own server which authenticates the app's users,
+ and which can store a secret. More information on secure mode can be found [here](http://docs.intercom.io/Install-on-your-mobile-product/secure-mode-ios-sdk).
+ 
+ @note This should be called before any user registration takes place.
+ @param hmac A HMAC digest of data.
+ @param data A piece of user data.
+ */
++ (void)setHMAC:(NSString *)hmac data:(NSString *)data;
+
+//=========================================================================================================
+/*! @name Working with anonymous users */
+//=========================================================================================================
+/*!
+ If you call registerUnidentifiedUser, all activity will be tracked anonymously. If you choose to subsequently
+ identify that user, all that anonymous activity will be merged into the identified user. This means that you
+ will no longer see the anonymous user in Intercom, but rather the identified one.
+ 
+ We recommend this is called from within the application delegate's didFinishLaunchingWithOptions: method.
+ 
+ @note You must call one of the user registration methods in order to start communicating with Intercom.
+ */
++ (void)registerUnidentifiedUser;
+
+//=========================================================================================================
+/*! @name Working with identified users */
+//=========================================================================================================
+/*!
+ In order to keep track of a specific user, you must identify it with a unique user identifier, an email
+ address, or both. By supplying information like this Intercom provides richer user profiles for your users.
+ This is a userId, supplied by you (e.g. from an existing web service for your product) to represent your
+ user in Intercom, once set it cannot be changed.
+ 
+ If you are putting the Intercom SDK into an app that has persisted an authentication token or equivalent
+ so your users don't have to log in repeatedly (like most apps) then we advise putting the user registration
+ call in the `didBecomeActive:` method in your application delegate. This won't have any negative impact if
+ you also add it to your authentication success method elsewhere in your app.
+ 
+ @param userId  A unique identifier for your user.
+ @param email   Your user's email address.
+ @note You must call one of the user registration methods in order to start communicating with Intercom.
+ */
++ (void)registerUserWithUserId:(NSString *)userId email:(NSString *)email;
+
+/*!
+ Register a user just with their userId.
+ 
+ @param userId A unique identifier for your user.
+ @note You must call one of the user registration methods in order to start communicating with Intercom.
+ */
++ (void)registerUserWithUserId:(NSString *)userId;
+
+/*!
+ Register a user with just their email address.
+ 
+ @param email   Your user's email address.
+ @note You must call one of the user registration methods in order to start communicating with Intercom.
+ */
++ (void)registerUserWithEmail:(NSString *)email;
+
+//=========================================================================================================
+/*! @name Resetting user data */
+//=========================================================================================================
+/*!
+ reset is used to reset all local caches and user data the Intercom SDK has created. Reset will also close
+ and active UI that is on screen. Use this at a time when you wish to log a user out of your app or change 
+ a user. Once called, the SDK will no longer communicate with Intercom until a further registration is made.
+ */
++ (void)reset;
+
+//=========================================================================================================
+/** @name Updating the user */
+//=========================================================================================================
+/*!
+ You can send any data you like to Intercom. Typically our customers see a lot of value in sending data that
+ relates to customer development, such as price plan, value of purchases, etc. Once these have been sent to
+ Intercom you can then apply filters based on these attributes.
+ 
+ A detailed list of the fields you can use to [update a user is available here](https://doc.intercom.io/api/#user-model)
+ 
+ Attributes such as the user email or name can be updated by calling
+ 
+ [Intercom updateUserWithAttributes:@{
+ @"email" : @"admin@intercom.io",
+ @"name" : @"Admin Name"
+ }];
+ 
+ Custom user attributes can be created and modified by passing a custom_attributes dictionary
+ You do not have to create attributes in Intercom beforehand. If one hasn't been seen before, it will be
+ created for you automatically.
+ 
+ [Intercom updateUserWithAttributes:@{
+ @"custom_attributes": @{
+ @"paid_subscriber" : @YES,
+ @"monthly_spend": @155.5,
+ @"team_mates": @3
+ }
+ }];
+ 
+ You can also set company data via this call by submitting an attribute dictionary like
+ 
+ [Intercom updateUserWithAttributes:@{
+ @"companies": @[ @{
+ @"name" : @"My Company",
+ @"id" : @"abcd1234"
+ }
+ ]}];
+ 
+ id is a required field for adding or modifying a company. A detailed description of the
+ [company model is available here](https://doc.intercom.io/api/#companies-and--users)
+ 
+ @param attributes This is a dictionary containing key/value pairs for multiple attributes.
+ @note Attributes may be either a `string`, `integer`, `double`, `unix timestamp` or `bool`.
+ */
++ (void)updateUserWithAttributes:(NSDictionary *)attributes;
+
+/*!
+ Log an event with a given name.
+ 
+ You can log events in Intercom based on user actions in your app. Events are different
+ to custom user attributes in that events are information on what Users did and when they
+ did it, whereas custom user attributes represent the User's current state as seen in their
+ profile. See details about Events [here](http://doc.intercom.io/api/#events).
+ 
+ @param name The name of the event that it is going to be logged.
+ */
++ (void)logEventWithName:(NSString *)name;
+
+/*!
+ Metadata Objects support a few simple types that Intercom can present on your behalf, see the
+ [Intercom API docs](http://doc.intercom.io/api/#event-metadata-types)
+ 
+ [Intercom logEventWithName:@"ordered_item" metaData:@{
+ @"order_date": @1392036272,
+ @"stripe_invoice": @"inv_3434343434",
+ @"order_number": @{
+ @"value": @"3434-3434",
+ @"url": @"https://example.org/orders/3434-3434"
+ }];
+ 
+ @param name The name of the event you wish to track.
+ @param metaData contains simple types to present to Intercom
+ */
++ (void)logEventWithName:(NSString *)name metaData:(NSDictionary *)metaData;
+
+//=========================================================================================================
+/*! @name Show Intercom messages and message composers */
+//=========================================================================================================
+
+/*!
+ Present the message composer.
+ */
++ (void)presentMessageComposer;
+
+/*!
+ Present the conversation list.
+ */
++ (void)presentConversationList;
+
+//=========================================================================================================
+/*! @name Working with push notifications */
+//=========================================================================================================
+/*!
+ Set the device token for push notifications. Once the device token is set, the SDK safely swizzles the methods
+ for receiving push notifications so it can intercept ones sent from Intercom. When a push notification from
+ Intercom is received, the SDK will automatically react and launch according to your preferences.
+ 
+ @param deviceToken The device token provided in the `didRegisterForRemoteNotificationsWithDeviceToken` method.
+ */
++ (void)setDeviceToken:(NSData *)deviceToken;
+
+//=========================================================================================================
+/*! @name Incoming message presentation options */
+//=========================================================================================================
+
+/*!
+ Use this to constrain an incoming notification view to a defined section of the window. By default, if this is
+ not set, message previews appear in the bottom left of your application's window.
+ 
+ @param previewPosition The ICMPreviewPosition for your incoming notifications.
+ */
++ (void)setPreviewPosition:(ICMPreviewPosition)previewPosition;
+
+/*!
+ Depending on the layout of your app you may need to modify the position of the message preview relative to the
+ preview's position. Use this method to add sufficient padding using x and y values.
+ 
+ @param x A horizontal padding value.
+ @param y A vertical padding value.
+ */
++ (void)setPreviewPaddingWithX:(CGFloat)x y:(CGFloat)y;
+
+//=========================================================================================================
+/*! @name Toggling message visibility */
+//=========================================================================================================
+
+/*!
+ Use this to hide all incoming Intercom messages and message previews in the parts of your app where you do
+ not wish to interrupt users, for example Camera views, parts of a game or other scenarios. If any part of the
+ SDK's UI is on screen when this is set to YES, it will close itself.
+ 
+ @param hidden A bool that toggles message visibility. Use this to either prevent or allow messages from being
+ displayed in select parts of your app.
+ */
++ (void)setMessagesHidden:(BOOL)hidden;
+
+//=========================================================================================================
+/*! @name Enable logging */
+//=========================================================================================================
+
+/*!
+ Enable logging for the Intercom SDK. By calling this method, Intercom will display debug information.
+ @note it is recommended to use it only while debugging)
+ */
++ (void)enableLogging;
+
+//=========================================================================================================
+/*! @name Intercom Notifications */
 //=========================================================================================================
 /*!
  Notifications thrown by the SDK when the SDK window is displayed and hidden. These notifications are fired
@@ -58,517 +346,97 @@ typedef NS_ENUM(NSInteger, ICMSDKError) {
  
  Once the user taps on the chat head, the message is presented in your app. It will be presented covering
  the entire screen, but no notifications will be thrown here as the SDK has already been visible.
-*/
+ */
+
 UIKIT_EXTERN NSString *const IntercomWindowWillShowNotification;
 UIKIT_EXTERN NSString *const IntercomWindowDidShowNotification;
 UIKIT_EXTERN NSString *const IntercomWindowWillHideNotification;
 UIKIT_EXTERN NSString *const IntercomWindowDidHideNotification;
 
-typedef void(^ICMCompletion)(NSError *error);
-
-//=========================================================================================================
-/** @name Intercom session listener protocol. */
-//=========================================================================================================
-/*!
- Protocol that must be implemented by any object that will be passed as a session listener. It will get notified of
- changes in the session state of the SDK.
-
- @since 2.0.6
+/**
+ @warning Deprecated methods will be removed in version 2.4.
  */
-@protocol IntercomSessionListener <NSObject>
-- (void)intercomSessionStatusDidChange:(BOOL)isSessionOpen;
-@end
 
-/*! Intercom contains all the class methods to interact with Intercom. */
-@interface Intercom : NSObject
-
-//=========================================================================================================
-/** @name Setup Intercom. */
-//=========================================================================================================
-/*!
- Prior to sending any data to Intercom, the SDK must be initialized with a valid `apiKey` and `appId`.
- These can be found in the configuration section of your application's settings page.
- 
- This should be placed in the iOS application delegate like so:
- 
-     - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
-     {
-         // Override point for customization after application launch
-         [Intercom setApiKey:@"my_api_key" forAppId:@"my_app_id"];
-         return YES;
-     }
- 
- @param apiKey The API key required to communicate with your Intercom application.
- @param appId The App Id of your Intercom application.
- @since Available since version 1.0
-*/
-+ (void)setApiKey:(NSString *)apiKey forAppId:(NSString *)appId;
+typedef void(^ICMCompletion)(NSError *error) __attribute((deprecated));
 
 /*!
- Initialize the SDK with additional parameters for advanced security. The securityOptions dictionary
- should contain a user specific data string `data` and the HMAC digest `hmac` for that data string.
- For more details about [Secure Mode see here](<http://docs.intercom.io/install-on-your-mobile-product/secure-mode-ios-sdk>)
- 
- 
-    [Intercom setApiKey:@"ios_sdk-2245d7aa263cb1def70bc95b66109bd18d6a9c35"
-               forAppId:@"a2qhfto6" 
-        securityOptions:@{
-            @"data" : @"user@myapp.com",
-            @"hmac" : @"6536f5f13b7ea53bc5e0073e7945e89918131d89"
-    }];
- 
- @param apiKey The API key required to communicate with your Intercom application.
- @param appId The App Id of your Intercom application.
- @param securityOptions A dictionary containing the security options (hmac and data) required to enable 
-  advanced security mode
- @since Available since version 2.0
-*/
-+ (void)setApiKey:(NSString *)apiKey forAppId:(NSString *)appId securityOptions:(NSDictionary*) securityOptions;
-
-//=========================================================================================================
-/** @name Session control. */
-//=========================================================================================================
-/*!
- Begins a session for the specified user, identified by an email address.
- This should be the same as the one used for your web application.
- 
- Intercom only tracks users who are logged in to your app. With this in mind, you should begin a session 
- for a user at the point in your app where authentication has been confirmed. Don't worry if Intercom hasn't 
- seen a specific user before - that user will be created automatically in Intercom when the session begins.
- 
- @note Once a session has begun, Intercom persists the session information and will track `UIApplication`
- state changes for you, so you won't need to explicitly start and stop a session. 
- Start on login and end on logout - we'll do the rest.
-
- @note Calling `beginSessionForUser...` every time at app launch might interfere with processing
- push notifications in the SDK: `beginSessionForUser...` will wipe out the existing persisted
- session information but processing of push notifications will only work if there is a session.
- Therefore we recommend beginning a session only once - when the user authenticates.
- 
- @discussion You should evaluate the error object in the completion block to handle errors as required:
- 
-    [Intercom beginSessionForUserWithEmail:self.dataSource.email
-        completion:^(NSError *error) {
-            // check the error object: only if we have no error, we have an active session and we can
-            // allow other Intercom calls (such as updating a user)
-            if (!error) {
-                // handleBeginSessionOK
-            } else {
-                // handleBeginSessionWithError:error
-            }
-    }];
- 
- @param email The user's email address.
- @param completion The completion block to be executed after the begin session operation is done.
- @since 2.0
-*/
-+ (void)beginSessionForUserWithEmail:(NSString *)email completion:(ICMCompletion)completion;
-
-/*!
- Begins a session for the specified user but using a unique identifier rather than an email address.
-
- Intercom only tracks users who are logged in to your app. With this in mind, you should begin a session
- for a user at the point in your app where authentication has been confirmed. Don't worry if Intercom hasn't
- seen a specific user before - that user will be created automatically in Intercom when the session begins.
-
- @note Once a session has begun, Intercom persists the session information and will track `UIApplication`
- state changes for you, so you won't need to explicitly start and stop a session.
- Start on login and end on logout - we'll do the rest.
- 
- @note Calling `beginSessionForUser...` every time at app launch might interfere with processing
- push notifications in the SDK: `beginSessionForUser...` will wipe out the existing persisted
- session information but processing of push notifications will only work if there is a session.
- Therefore we recommend beginning a session only once - when the user authenticates.
- 
- @discussion You should evaluate the error object in the completion block to handle errors as required:
- 
-    [Intercom beginSessionForUserWithUserId:self.dataSource.userId
-        completion:^(NSError *error) {
-            // check the error object: only if we have no error, we have an active session and we can
-            // allow other Intercom calls (such as updating a user)
-            if (!error) {
-                // handleBeginSessionOK
-            } else {
-                // handleBeginSessionWithError:error
-            }
-    }];
-
- @param userId A unique identifier representing the user.
- @param completion The completion block to be executed after the begin session operation is done.
- @since 2.0
+ @deprecated Use setSecureOptions: instead
  */
-+ (void)beginSessionForUserWithUserId:(NSString *)userId completion:(ICMCompletion)completion;
++ (void)setApiKey:(NSString *)apiKey forAppId:(NSString *)appId securityOptions:(NSDictionary*) securityOptions __attribute((deprecated("Use method 'setSecureOptions:' instead")));
 
 /*!
- Begins a session for an anonymous user.
- @warning This is an *experimental BETA feature* and not fully supported. Future work in Intercom will 
- help to support this.
- @note Creating a new session using either an email or user id automatically logs out the anonymous user.
- @param completion The completion block to be executed after the begin session operation is done.
- @since 2.0
+ @deprecated Use registerUserWithEmail: instead
  */
-+ (void)beginSessionForAnonymousUserWithCompletion:(ICMCompletion)completion;
++ (void)beginSessionForUserWithEmail:(NSString *)email completion:(ICMCompletion)completion __attribute((deprecated("Use method 'registerUserWithEmail:' instead")));
 
 /*!
- Ends a session for a user and deletes access tokens from the SDK instance. You would typically use this
- method if a user is logging out of your app.
- @note Only implement endSession when logging a user out of your application. You will not need to
- implement it anywhere else, as Intercom listens for changes in `UIApplication` state and calculates
- sessions based on those actions.
- @since 1.0
+ @deprecated Use registerUserWithUserId: instead
  */
-+ (void)endSession;
++ (void)beginSessionForUserWithUserId:(NSString *)userId completion:(ICMCompletion)completion __attribute((deprecated("Use method 'registerUserWithUserId:' instead")));
 
-//=========================================================================================================
-/** @name Update a user. */
-//=========================================================================================================
 /*!
- Update user attributes.
- 
- Updating attributes allows for the submission of multiple attributes with custom values.
- A detailed list with the fields you can use to [update a user is available here](<http://doc.intercom.io/api/#create-or-update-user>)
- Attributes such as the user email can be updated by calling
- 
-    [Intercom updateUserWithAttributes:@{
-        @"email" : @"admin@intercom.io"
-    }];
- 
- Multiple attributes can be changed at once:
- 
-    [Intercom updateUserWithAttributes:@{
-        @"email" : @"admin@intercom.io",
-        @"name" : @"Admin Name"
-    }];
- 
- Custom user attributes can be created and modified by passing a custom_attributes dictionary
- You do not have to create attributes in Intercom beforehand. If one hasn't been seen before, it will be 
- created for you automatically. 
- 
-    [Intercom updateUserWithAttributes:@{
-        @"custom_attributes": @{
-            @"paid_subscriber" : @YES,
-            @"monthly_spend": @155.5,
-            @"team_mates": @3
-        }
-    }];
- 
- You can also set company data via this call by submitting an attribute dictionary like
- 
-    [Intercom updateUserWithAttributes:@{
-        @"companies": @[ @{
-            @"name" : @"My Company", 
-            @"id" : @"abcd1234" 
-        } 
-    ]}];
-
- id is a required field for adding or modifying a company. A detailed description of the 
- [company model is available here](<http://doc.intercom.io/api/#companies>)
- 
-
- @param attributes This is a dictionary containing key/value pairs for multiple attributes.
- @note Attributes may be either a `string`, `integer`, `double`, `unix timestamp` or `bool`.
- @since Available since version 1.0
- @deprecated in 2.0.5 - Use method 'updateUserWithAttributes:completion:' instead
+ @deprecated Use registerUnidentifiedUser instead
  */
-+ (void)updateUserWithAttributes:(NSDictionary *)attributes __attribute((deprecated("Use method 'updateUserWithAttributes:completion:' instead")));
++ (void)beginSessionForAnonymousUserWithCompletion:(ICMCompletion)completion __attribute((deprecated("Use method 'registerUnidentifiedUser' instead")));
 
 /*!
- Update user attributes.
- 
- Updating attributes allows for the submission of multiple attributes with custom values.
- A detailed list with the fields you can use to [update a user is available here](<http://doc.intercom.io/api/#create-or-update-user>)
- Attributes such as the user email can be updated by calling
- 
- 
-    [Intercom updateUserWithAttributes:@{
-        @"email" : @"admin@intercom.io"
-    } completion:^(NSError *error) {
-        // handleError:error
-    }];
- 
- Multiple attributes can be changed at once:
- 
-    [Intercom updateUserWithAttributes:@{
-        @"email" : @"admin@intercom.io",
-        @"name" : @"Admin Name"
-    } completion:^(NSError *error) {
-        // handleError:error
-    }];
- 
- Custom user attributes can be created and modified by passing a custom_attributes dictionary
- You do not have to create attributes in Intercom beforehand. If one hasn't been seen before, it will be
- created for you automatically.
- 
-
-    [Intercom updateUserWithAttributes:@{
-        @"custom_attributes": @{
-            @"paid_subscriber" : @YES,
-            @"monthly_spend": @155.5,
-            @"team_mates": @3
-        }
-     } completion:^(NSError *error) {
-         // handleError:error
-     }];
- 
- You can also set company data via this call by submitting an attribute dictionary like
- 
-     [Intercom updateUserWithAttributes:@{
-         @"companies": @[ @{
-             @"name" : @"My Company",
-             @"id" : @"abcd1234"
-         }
-     ]} completion:^(NSError *error) {
-         // handleError:error
-     }];
- 
- id is a required field for adding or modifying a company. A detailed description of the
- [company model is available here](<http://doc.intercom.io/api/#companies>)
-
- @param attributes This is a dictionary containing key/value pairs for multiple attributes.
- @param completion The completion block to be executed after the update operation is done.
- @note Attributes may be either a `string`, `integer`, `double`, `unix timestamp` or `bool`.
- @since Available since version 2.0.5
+ @deprecated Use reset instead
  */
-+ (void)updateUserWithAttributes:(NSDictionary *)attributes completion:(ICMCompletion)completion;
++ (void)endSession __attribute((deprecated("Use method 'reset' to reset your local install instead")));
 
-//=========================================================================================================
-/** @name Log events. */
-//=========================================================================================================
 /*!
- Log an event with a given name.
-
- Events are how you can submit user activity to Intercom. Once you are sending Intercom event data, you can
- filter your user base with those events and create Auto Messages to send whenever an event occurs. Every
- event is associated with an event name, the time it happened, the user that caused the event, and
- optionally some extra metadata. Events record the count, first and last occurrence of an event.
- 
- Events are different to Custom Attributes in that events are information on what Users did and when they
- did it, whereas Custom Attributes represent the User’s current state as seen in their profile. For example,
- the first time they subscribed to a paid plan, or the most recent time they changed their plan would be
- represented by events, whereas a User Attribute would be used to record their current plan.
- 
- Because Events are used for filtering and messaging, and event names are used directly in Intercom by
- your App's Admins we recommend sending high-level activity about your users that you would like to message
- on, rather than raw clickstream or user interface actions. For example an order action is a good candidate
- for an Event, versus all the clicks and actions that were taken to get to that point. We also recommend
- sending event names that combine a past tense verb and nouns, such as ‘created-project’.
-
- @param name The name of the event that it is going to be logged.
- @since 2.0
- @deprecated in 2.0.5 - Use method 'logEventWithName:completion:' instead
+ @deprecated Use updateUserWithAttributes: instead
  */
-+ (void)logEventWithName:(NSString *)name __attribute((deprecated("Use method 'logEventWithName:completion:' instead")));
++ (void)updateUserWithAttributes:(NSDictionary *)attributes completion:(ICMCompletion)completion __attribute((deprecated("Use method 'updateUserWithAttributes:' instead")));
 
-//=========================================================================================================
-/** @name Log events. */
-//=========================================================================================================
 /*!
- Log an event with a given name. Because of the asynchronous nature of this method, there is a completion block where
- you can check if the event was logged correctly
-
- Events are how you can submit user activity to Intercom. Once you are sending Intercom event data, you can
- filter your user base with those events and create Auto Messages to send whenever an event occurs. Every
- event is associated with an event name, the time it happened, the user that caused the event, and
- optionally some extra metadata. Events record the count, first and last occurrence of an event.
- 
- Events are different to Custom Attributes in that events are information on what Users did and when they
- did it, whereas Custom Attributes represent the User’s current state as seen in their profile. For example,
- the first time they subscribed to a paid plan, or the most recent time they changed their plan would be
- represented by events, whereas a User Attribute would be used to record their current plan.
- 
- Because Events are used for filtering and messaging, and event names are used directly in Intercom by
- your App's Admins we recommend sending high-level activity about your users that you would like to message
- on, rather than raw clickstream or user interface actions. For example an order action is a good candidate
- for an Event, versus all the clicks and actions that were taken to get to that point. We also recommend
- sending event names that combine a past tense verb and nouns, such as ‘created-project’.
- 
- @param name The name of the event that it is going to be logged.
- @param completion The completion block to be executed after the event is logged.
- @since 2.0.5
+ @deprecated Use logEventWithName: instead
  */
-+ (void)logEventWithName:(NSString *)name completion:(ICMCompletion)completion;
++ (void)logEventWithName:(NSString *)name completion:(ICMCompletion)completion __attribute((deprecated("Use method 'logEventWithName:' instead")));
 
 /*!
- Metadata Objects support a few simple types that Intercom can present on your behalf, see the 
- [Intercom API docs](<http://doc.intercom.io/api/#event-metadata-types>)
- 
- @param name The name of the event you wish to track.
- @param metadata contains simple types to present to Intercom
- 
-    [Intercom logEventWithName:@"ordered_item"
-        optionalMetaData:@{
-            @"event_name" : @"ordered-item",
-            @"created_at": @1389913941,
-            @"metadata": @{
-                @"order_date": @1392036272,
-                @"stripe_invoice": @"inv_3434343434",
-                @"order_number": @{
-                    @"value": @"3434-3434",
-                    @"url": @"https://example.org/orders/3434-3434"
-                },
-                @"price": @{
-                    @"currency": @"usd",
-                    @"amount": @2999
-                }
-            }
-        }
-        completion:^(NSError *error) {
-            // handleError:error
-    }];
- 
- @param completion The completion block to be executed after the event is logged.
- @since 2.0
+ @deprecated Use logEventWithName:metaData: instead
  */
-+ (void)logEventWithName:(NSString *)name optionalMetaData:(NSDictionary *)metadata completion:(ICMCompletion)completion;
++ (void)logEventWithName:(NSString *)name optionalMetaData:(NSDictionary *)metadata completion:(ICMCompletion)completion __attribute((deprecated("Use method 'logEventWithName:metaData:' instead")));
 
-//=========================================================================================================
-/** @name Present Conversation List or Message Composer. */
-//=========================================================================================================
 /*!
- Present the message composer or the conversation list.
- 
- @param showConversationList set to `YES` in order to display the conversation list rather then the
- compose new message screen.
- 
- @since 2.0
+ @deprecated This is no longer supported
  */
-+ (void)presentMessageViewAsConversationList:(BOOL)showConversationList;
++ (void)checkForUnreadMessages __attribute((deprecated("This is no longer supported.")));
 
-//=========================================================================================================
-/** @name Enable SDK Push notifications. */
-//=========================================================================================================
 /*!
- If you use Remote (Push) Notifications in your app, you can enable notification handling for Intercom's
- SDK with this call. 
- 
- This should be placed in the iOS application delegate like so:
-
-     - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
-     {
-         // Override point for customization after application launch
-         ...
-         [Intercom registerForRemoteNotifications];
-         return YES;
-     }
-
- Please note you still need to call `[UIApplication sharedApplication] registerForRemoteNotificationTypes:...`.
- Registering for remote notification types is handled differently in iOS 8 - here's a code snippet:
- 
-     - (void)applicationDidBecomeActive:(UIApplication *)application
-     {
-         [application setApplicationIconBadgeNumber:0];
-         if ([application respondsToSelector:@selector(registerUserNotificationSettings:)]){ //iOS8
-             [application registerUserNotificationSettings:[UIUserNotificationSettings settingsForTypes:
-                (UIRemoteNotificationTypeBadge |
-                 UIRemoteNotificationTypeSound |
-                 UIRemoteNotificationTypeAlert)
-             categories:nil]];
-             [application registerForRemoteNotifications];
-         } else {
-             [application registerForRemoteNotificationTypes:(UIRemoteNotificationType)
-                 (UIRemoteNotificationTypeBadge |
-                 UIRemoteNotificationTypeSound |
-                 UIRemoteNotificationTypeAlert)];
-         }
-     }
-
- @note You must have enabled and configured push notifications through the SDK Settings page of your app on the web.
- @since 2.0
-*/
-+ (void)registerForRemoteNotifications;
-
-//=========================================================================================================
-/** @name Customize incoming notifications. */
-//=========================================================================================================
-/*!
- Depending on the layout of your app you may need to tweak the position of an incoming notification to not
- infringe other elements in your UI.
- 
- @param presentationInset Set the edge insets if padding is required around other UI elements.
- 
- @since 2.0
+ @deprecated Use setPreviewPaddingX:y: instead
  */
-+ (void)setPresentationInsetOverScreen:(UIEdgeInsets)presentationInset;
++ (void)setPresentationInsetOverScreen:(UIEdgeInsets)presentationInset __attribute((deprecated("Use method 'setPreviewPaddingX:y:' instead")));
 
 /*!
- Use this to constrain an incoming notification view to a defined section of the window.
- 
- @param presentationMode Select from any of the defined ICMPresentationMode values.
- 
- @since 2.0
+ @deprecated Use setPreviewPosition: instead
  */
-+ (void)setPresentationMode:(ICMPresentationMode)presentationMode;
++ (void)setPresentationMode:(ICMPresentationMode)presentationMode __attribute((deprecated("Use method 'setPreviewPosition:' instead")));
 
-//=========================================================================================================
-/** @name Customize color. */
-//=========================================================================================================
 /*!
- Set the base color used to draw elements in the Intercom SDK
- This overrides the theme color set in the Settings page of your app on the web.
- 
- @param color The UIColor you wish to set as your base color.
- @since 2.0
+ @deprecated This is no longer supported. You can change your app's theme through settings on Intercom in the web.
  */
-+ (void)setBaseColor:(UIColor *)color;
++ (void)setBaseColor:(UIColor *)color __attribute((deprecated("This is no longer supported.")));
 
-//=========================================================================================================
-/** @name Trigger Message Loading. */
-//=========================================================================================================
 /*!
- Get any new and unread messages for this user
- 
- @note Once a session has been established, the Intercom SDK checks periodically for new and unread
- messages - you don't need to do anything. Call this method only if you want to trigger this process manually.
- @since 2.0
+ @deprecated Use setMessagesHidden: instead
  */
-+ (void)checkForUnreadMessages;
++ (void)hideIntercomMessages:(BOOL)hidden  __attribute((deprecated("Use method 'setMessagesHidden:' instead")));
 
-//=========================================================================================================
-/** @name Hide notifications. */
-//=========================================================================================================
 /*!
- Used to hide the SDK conversations window.
- 
- @since 2.0
- @param hide This is a bool that specifies if the SDK needs to hide conversations
- @deprecated in 2.0.5 - Use method 'hideNotifications:' instead
+ @deprecated Use presentConversationList or presentMessageComposer instead
  */
-+ (void)hideConversations:(BOOL)hide __attribute((deprecated("Use method 'hideNotifications:' instead")));
++ (void)presentMessageViewAsConversationList:(BOOL)showConversationList __attribute((deprecated("Use method 'presentConversationList & presentMessageComposer' instead")));
 
-//=========================================================================================================
-/** @name Hide notifications. */
-//=========================================================================================================
 /*!
- Used to hide the SDK notifications and prevent conversations from being automatically presented to users, but
- it won't close the SDK messages window if it is already open.
- 
- @param hide This is a bool that specifies if the SDK needs to hide notifications
- @since 2.0.5
+ @deprecated This is no longer supported.
  */
-+ (void)hideNotifications:(BOOL)hide;
++ (void)setSessionListener:(id<IntercomSessionListener>)sessionListener __attribute((deprecated("This is no longer supported.")));
 
-//=========================================================================================================
-/** @name Enable logging. */
-//=========================================================================================================
 /*!
- Enable logging for the Intercom SDK. By calling this method, Intercom will display debug information.
- @note it is recommended to use it only while debugging)
-
- @since 2.0
+ @deprecated Use method setDeviceToken instead.
  */
-+ (void)enableLogging;
-
-//=========================================================================================================
-/** @name Listen for session state changes. */
-//=========================================================================================================
-/*!
- By setting a session listener, you will be notified of changes in the session state of the SDK, so you 
- can update your UI according to these changes (e.g. if you have a button to open our message composer, 
- you could disable this button if there is no Intercom session)
-
- @param sessionListener Object that implements the IntercomSessionListener protocol
- @since 2.0.6
- */
-+ (void)setSessionListener:(id<IntercomSessionListener>)sessionListener;
++ (void)registerForRemoteNotifications __attribute((deprecated("Use method 'setDeviceToken' instead.")));
 
 @end

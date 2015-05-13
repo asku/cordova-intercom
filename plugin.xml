@@ -17,7 +17,8 @@
     <platform name="ios">
       <header-file src="src/ios/Intercom.h" />
       <source-file src="src/ios/libIntercom.a" framework="true" compiler-flags="-ObjC" />
-
+      <resource-file src="src/ios/Intercom.bundle" />
+      
       <header-file src="src/ios/CordovaIntercom.h" />
       <source-file src="src/ios/CordovaIntercom.m" />
 
@@ -42,5 +43,6 @@
       <framework src="AVFoundation.framework" />
       <framework src="Security.framework" />
       <framework src="QuartzCore.framework" />
+      <framework src="libicucore.dylib" />
     </platform>
 </plugin>

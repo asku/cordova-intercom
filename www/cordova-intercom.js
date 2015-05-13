@@ -25,3 +25,8 @@ exports.logEvent = function(eventName, metaData, success, error) {
 exports.checkForUnreadMessages = function(success, error) {
   exec(success, error, 'Intercom', 'checkForUnreadMessages');
 };
+
+// This should be called to register the device token with Intercom.
+exports.setDeviceToken = function(deviceToken, success, error) {
+  exec(success, error, 'Intercom', 'setDeviceToken', [deviceToken]);
+};
