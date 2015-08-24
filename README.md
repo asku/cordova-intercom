@@ -1,3 +1,5 @@
+# Hey, the awesome guys at Intercom released an [official cordova plugin](https://github.com/intercom/intercom-cordova). Use that instead!
+
 # cordova-intercom
 
 ## Install
